@@ -93,6 +93,7 @@ export default defineConfig((config) => {
         'dev.rapidcanvas.net',
         'test.dev.rapidcanvas.net',
         'qa.dev.rapidcanvas.net',
+        'app.rapidcanvas.ai',
       ],
       proxy: {
         '/api1': {
