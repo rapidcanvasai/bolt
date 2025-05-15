@@ -169,6 +169,21 @@ jobs:
           push: true
           file: Dockerfile
           tags: ${{ env.DOCKER_TAGS }}
+    
+      - name: "Create code-editor Release: v${{env.NEW_RELEASE_VERSION }}"
+        if: (success() && inputs.create_release && env.NEW_RELEASE_VERSION != '')
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.NEW_RELEASE_VERSION }}
+          release_name: v${{env.NEW_RELEASE_VERSION }}
+          commitish: main
+          body: |
+            Release created by GitHub Action.
+          draft: false
+          prerelease: false
 
       - name: Notify slack Success
         if:  success()
