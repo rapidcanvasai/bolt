@@ -12,7 +12,7 @@ import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from
 import { description, useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
+import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
 import { cubicEasingFn } from '~/utils/easings';
 import { createScopedLogger, renderLogger } from '~/utils/logger';
 import { BaseChat } from './BaseChat';
@@ -45,9 +45,7 @@ export function Chat() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const { ready, initialMessages, storeMessageHistory, importChat, exportChat } = useChatHistory();
-
-  console.log('initialMessages', initialMessages);
+  const { ready, initialMessages, resetMessages, storeMessageHistory, importChat, exportChat } = useChatHistory();
 
   const title = useStore(description);
   useEffect(() => {
@@ -56,6 +54,12 @@ export function Chat() {
 
   const { id: mixedId } = useLoaderData<{ id?: string }>();
   const token = getToken();
+
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      resetMessages();
+    }
+  }, [initialMessages]);
 
   useEffect(() => {
     if (!mixedId) {
@@ -69,7 +73,7 @@ export function Chat() {
 
     loadFilesFromDataApp(mixedId, token!)
       .then(async (data) => {
-        await importChat(data.folderName, !!initialMessages.length ? initialMessages : data.messages);
+        await importChat(data.folderName, data.messages);
         saveFilesToWorkbench({ fileArtifacts: data.updatedArtifacts.files });
         removeTokenFromUrl();
         setIsLoading(false);
@@ -160,6 +164,8 @@ export const ChatImpl = memo(
   ({ description, initialMessages, storeMessageHistory, importChat, exportChat }: ChatProps) => {
     useShortcuts();
 
+    const { showChat } = useLoaderData<{ showChat: boolean }>();
+
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -172,10 +178,11 @@ export const ChatImpl = memo(
 
     const [model, setModel] = useState(() => {
       const savedModel = Cookies.get('selectedModel');
-      return savedModel || 'gpt-4o-mini';
+      return savedModel || DEFAULT_MODEL;
     });
     const [provider, setProvider] = useState(() => {
-      return PROVIDER_LIST.find((p) => p.name === 'OpenAI') as ProviderInfo;
+      const savedProvider = Cookies.get('selectedProvider');
+      return (PROVIDER_LIST.find((p) => p.name === savedProvider) || DEFAULT_PROVIDER) as ProviderInfo;
     });
 
     const [animationScope, animate] = useAnimate();
@@ -534,7 +541,7 @@ export const ChatImpl = memo(
         ref={animationScope}
         textareaRef={textareaRef}
         input={input}
-        showChat={true}
+        showChat={showChat}
         chatStarted={chatStarted}
         isStreaming={isLoading || fakeLoading}
         onStreamingChange={(streaming) => {
